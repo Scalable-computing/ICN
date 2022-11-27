@@ -23,9 +23,8 @@ class TLRU_Table:
                 self.times.pop(data_name)
 
     def get(self, data_name):
-        if self.contains(data_name):
-            self.vals.move_to_end(data_name)
-            return self.vals[data_name], self.times[data_name]
+        self.vals.move_to_end(data_name)
+        return self.vals[data_name], self.times[data_name]
 
     def removeLRU(self):
         (k, v) = self.vals.popitem(last=False)
@@ -44,7 +43,7 @@ class TLRU_Table:
         self.vals[data_name] = data_val
         self.counts[data_name] = count
 
-    def remove(self, data_name):
+    def removeCount(self, data_name):
         if self.contains(data_name):
             if self.counts[data_name] == 1:
                 val = self.vals.pop(data_name)
@@ -56,8 +55,17 @@ class TLRU_Table:
                 return self.vals[data_name], self.counts[data_name]
         return None, -1
 
+    def remove(self, data_name):
+        if self.contains(data_name):
+            val = self.vals.pop(data_name)
+            self.times.pop(data_name)
+            self.counts.pop(data_name)
+            return val, 0
+        else:
+            return None, -1
+
     def __str__(self):
-        return str(self.vals)
+        return str(self.vals) + '\n' + str(self.counts)
 
     def __iter__(self):
         return iter(self.vals)

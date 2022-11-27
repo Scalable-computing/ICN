@@ -23,7 +23,10 @@ class Node:
 
     def addToPIT(self, data_name, node_name, ttw, count=1):
         self.PIT.add(data_name, node_name, ttw, count)
-        print(self.PIT)
+
+    def removeCountFromPIT(self, data_name):
+        dest, count = self.PIT.removeCount(data_name)
+        return dest, count
 
     def removeFromPIT(self, data_name):
         dest, count = self.PIT.remove(data_name)
@@ -48,6 +51,16 @@ class Node:
     def cacheData(self, data_name, data_val, ttu):
         self.cache.add(data_name, data_val, ttu)
 
+    def hasCache(self, data_name):
+        if self.cache.contains(data_name):
+            return True
+        else:
+            return False
+
+    def getCache(self, data_name):
+        data, ttu = self.cache.get(data_name)
+        return data, ttu
+
     def addPeer(self, node_name):
         if node_name not in self.peers:
             self.peers.append(node_name)
@@ -66,7 +79,6 @@ class Node:
         if data_name in self.data:
             data_val, ttu = self.data[data_name]
             ttu += time()
-            print(data_val, ttu)
             return data_val, ttu
         else:
             return None
@@ -85,7 +97,7 @@ def main():
     parser.add_argument('--port', help='Port for this node', type=int, default=5789)
     parser.add_argument('--data-n', help='Data name for this node', type=str, default=None)
     parser.add_argument('--data-v', help='Data for the node', type=str, default="10")
-    parser.add_argument('--logging-level', help='Logging level: 10 - Debug, 20 - Info, 30 - Warnings', type=int, default=10)
+    parser.add_argument('--logging-level', help='Logging level: 10 - Debug, 20 - Info, 30 - Warnings', type=int, default=20)
     args = parser.parse_args()
 
     if args.node_name is None:

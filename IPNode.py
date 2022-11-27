@@ -4,6 +4,7 @@ from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol
 from twisted.internet import reactor
 from twisted.internet.error import ConnectionRefusedError
 import logging
+import random
 
 MIN_PORT = 5057
 MAX_PORT = 5070
@@ -21,6 +22,8 @@ class NodeProtocol(Protocol):
 
     def connectionMade(self):
         logging.info(f"[Connected]: {self.transport.getPeer()}")
+        # if self.incoming:
+        #     self.connections.append(self)
 
     def connectionLost(self, reason):
         logging.info(f"[Disconnected]: {self.transport.getPeer()}")
@@ -48,13 +51,15 @@ class IPNode(Factory):
         # "Server"
         self.id = node_id
         self.port = port
-        self.waiting = []
         self.connections = {}
         self.IP_map = {}
         self.icn_protocol = icnp
 
         endp = TCP4ServerEndpoint(reactor, port)
         endp.listen(self)
+
+        self.part_of_network = False
+        self.isolated = True
 
     def buildProtocol(self, addr):
         protocol = NodeProtocol(self, False)
@@ -73,15 +78,6 @@ class IPNode(Factory):
         except ConnectionRefusedError:
             return d
 
-    def sendClMsg(self, prot, mn):
-        msg, node = mn
-        self.connections[node] = prot
-        try:
-            self.waiting.pop()
-        except Exception as e:
-            logging.error("No matching connection:", e)
-        prot.sendMsg(msg)
-
     def getConnection(self, node_id):
         if node_id in self.connections:
             return self.connections[node_id]
@@ -89,6 +85,16 @@ class IPNode(Factory):
             return
         else:
             return None
+
+    def clientMsg(self, port, addr, msg):
+        try:
+            endp = TCP4ClientEndpoint(reactor, addr, port)
+            d = connectProtocol(endp, NodeProtocol(self, True))
+            d.addCallback(self.confirmMessage, msg)
+            d.addErrback(self.errorHandler)
+            return d
+        except ConnectionRefusedError:
+            return d
 
     def sendMsg(self, msg, node_name, connection=None):
         if node_name is None:
@@ -100,6 +106,7 @@ class IPNode(Factory):
             try:
                 addr, port = self.IP_map[node_name].split(':')
                 port = int(port)
+                self.clientMsg(port, addr, msg)
             except Exception as e:
                 logging.error(repr(e))
                 logging.warning(f"Could not connect to {node_name}")
@@ -107,52 +114,64 @@ class IPNode(Factory):
                 return
         connection.sendMsg(msg)
 
-    def update_IP_map(self, ip_map):
-        for node_name, addr in ip_map.items():
-            if node_name not in self.IP_map:
-                self.IP_map[node_name] = addr
-
-    def search(self, msg, port=MIN_PORT):
-        logging.debug(f"Looking on port: {port}")
-        if port < MIN_PORT:
-            logging.error(f"Searching outside of port range")
+    def search(self, msg, port_iter=None):
+        if port_iter is None:
+            ports_to_check = [*range(MIN_PORT, MAX_PORT + 1)]
+            random.shuffle(ports_to_check)
+            port_iter = iter(ports_to_check)
+        try:
+            port = next(port_iter)
+            if port == self.port:
+                port = next(port_iter)
+        except StopIteration:
+            reactor.callLater(1, self.searchFailed, msg)
             return
+        logging.debug(f"Looking on port: {port}")
         if len(self.connections) > 0:
             logging.debug(f"Stopping search")
             return
-        if port > MAX_PORT:
-            logging.warning(f"No nodes found on network")
-            return
-        # if port == self.port:
-        #     self.continueSearch(None, msg, port)
         d = self.client(port, announce_msg=msg)
-        d.addCallback(self.continueSearch, msg, port)
+        d.addCallback(self.continueSearch, msg, port_iter)
 
-    def continueSearch(self, prot, msg, port):
-        reactor.callLater(0.2, self.search, msg, port + 1)
+    def continueSearch(self, prot, msg, port_iter):
+        reactor.callLater(0.2, self.search, msg, port_iter)
 
-    def addNodeConnection(self, source, node_name, port=None):
+    def searchFailed(self, msg):
+        if len(self.connections) > 0:
+            return
+        elif self.isolated:
+            logging.warning("No nodes found on network.")
+            self.part_of_network = True
+            return
+        else:
+            logging.warning(f"Search failed.")
+            self.isolated = True
+            reactor.callLater(5, self.search, msg)
+
+    def addNodeConnection(self, node_name, source):
         self.connections[node_name] = source
-        peer = source.transport.getPeer()
-        if node_name not in self.IP_map:
-            logging.debug(f"{node_name} not in IP map, adding...")
-            if not port:
-                port = peer.port
-            addr = f"{peer.host}:{port}"
-            self.IP_map[node_name] = addr
+        self.part_of_network = True
 
-    def addNodeAddr(self, node_name, addr):
+    def addNodeAddr(self, node_name, port, host, source=None):
         if node_name == self.id:
             return
         if node_name not in self.IP_map:
             logging.debug(f"{node_name} not in IP map, adding...")
-            host, port = addr.split(':')
+            if source is not None:
+                host = source.transport.getPeer().host
             addr = f"{host}:{port}"
             self.IP_map[node_name] = addr
 
-    def getAddr(self):
-        print(f"get : {self.addr}")
-        return str(self.addr) + ':' + str(self.port)
+    def getPort(self):
+        return str(self.port)
+
+    def getPeerAddr(self, node_name):
+        if node_name == self.id:
+            return f"{self.addr}:{self.port}"
+        if node_name not in self.IP_map:
+            return None
+        else:
+            return self.IP_map[node_name]
 
     def remove_node_connection(self, node_name):
         p = self.connections.pop(node_name)
@@ -161,6 +180,20 @@ class IPNode(Factory):
     def confirmConnection(self, prot, msg):
         self.sendMsg(msg, None, prot)
         return prot
+
+    def confirmMessage(self, prot, msg):
+        prot.sendMsg(msg)
+        return prot
+
+    def verifyPeer(self, node_name):
+        if node_name in self.IP_map and node_name not in self.icn_protocol.node.peers:
+            self.removePeer(node_name)
+
+    def removePeer(self, node_name):
+        if node_name in self.connections:
+            self.remove_node_connection(node_name)
+        if node_name in self.IP_map:
+            self.IP_map.pop(node_name)
 
     def errorHandler(self, e):
         e.trap(ConnectionRefusedError)

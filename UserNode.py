@@ -17,7 +17,7 @@ class UserNode(Node):
         if inp == "state":
             # For debugging only
             i = self.icn.ip_node
-            print(f"name:{self.name}\nconnections:{i.connections}\nip map:{i.IP_map}\npeers:{self.peers}\ndata:{self.data}\nPIT:{self.PIT}\ncache:{self.cache}")
+            print(f"name:{self.name}\nconnections:{i.connections}\nip map:{i.IP_map}\npeers:{self.peers}\ndata:{self.data}\nPIT:{self.PIT}\ncache:{self.cache}\nlocations:{self.locations}")
         else:
             self.reactor.callFromThread(self.requestData, inp, 60)
         return True
