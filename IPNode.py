@@ -117,11 +117,11 @@ class IPNode(Factory):
         if port < MIN_PORT:
             logging.error(f"Searching outside of port range")
             return
-        if port > MAX_PORT:
-            logging.warning(f"No nodes found on network")
-            return
         if len(self.connections) > 0:
             logging.debug(f"Stopping search")
+            return
+        if port > MAX_PORT:
+            logging.warning(f"No nodes found on network")
             return
         # if port == self.port:
         #     self.continueSearch(None, msg, port)
@@ -142,6 +142,8 @@ class IPNode(Factory):
             self.IP_map[node_name] = addr
 
     def addNodeAddr(self, node_name, addr):
+        if node_name == self.id:
+            return
         if node_name not in self.IP_map:
             logging.debug(f"{node_name} not in IP map, adding...")
             host, port = addr.split(':')
@@ -149,6 +151,7 @@ class IPNode(Factory):
             self.IP_map[node_name] = addr
 
     def getAddr(self):
+        print(f"get : {self.addr}")
         return str(self.addr) + ':' + str(self.port)
 
     def remove_node_connection(self, node_name):

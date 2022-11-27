@@ -1,7 +1,6 @@
 from ICNProtocol import ICNProtocol
 from twisted.internet import reactor
 from Tlru import TLRU_Table
-import ast
 import logging
 import argparse
 from time import time
@@ -29,6 +28,9 @@ class Node:
     def removeFromPIT(self, data_name):
         dest, count = self.PIT.remove(data_name)
         return dest, count
+
+    def hasPITEntry(self, data_name):
+        return self.PIT.contains(data_name)
 
     def hasLocation(self, data_name):
         if self.locations.contains(data_name):
