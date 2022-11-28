@@ -26,7 +26,7 @@ class Node:
 
         if data_n is not None:
             # Temperature sensor with a time to use of 60 (since it updates once per min)
-            self.sensors[data_n] = Sensor(data_n, 1)
+            self.sensors[data_n] = Sensor(data_n, 60)
             self.sensors[data_n].update()
             self.data[data_n] = self.sensors[data_n].getValue()
 
@@ -46,6 +46,15 @@ class Node:
 
     def hasPITEntry(self, data_name):
         return self.PIT.contains(data_name)
+
+    def canRequestFrom(self, node_name):
+        for d in self.PIT:
+            print(d)
+            if d in self.locations:
+                if self.locations[d] == node_name:
+                    v, t = self.PIT.get(d)
+                    return True, d, v, t
+        return False, None, None, None
 
     def hasLocation(self, data_name):
         if self.locations.contains(data_name):
@@ -76,6 +85,10 @@ class Node:
     def addPeer(self, node_name):
         if node_name not in self.peers:
             self.peers.append(node_name)
+
+    def removePeer(self, node_name):
+        if node_name in self.peers:
+            self.peers.remove(node_name)
 
     def hasData(self, data_name):
         if data_name in self.data:
@@ -110,13 +123,17 @@ class Node:
                 self.data[k] = s.getValue()
             sleep(10)
 
+    def __str__(self):
+        return f"Name: {self.name}\nPIT:\n{self.PIT}\nCache:\n{self.cache}\nLocations:\n{self.locations}\nPeers:\n{self.peers}\nData:\n{self.data}\nIP map:\n{self.icn.ip_node.IP_map}\nConnections\n{self.icn.ip_node.connections}"
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--node-name', help='Name for node in this network', type=str)
     parser.add_argument('--port', help='Port for this node', type=int, default=5789)
     parser.add_argument('--data-n', help='Data name for this node', type=str, default=None)
     parser.add_argument('--data-v', help='Data for the node', type=str, default="10")
-    parser.add_argument('--logging-level', help='Logging level: 10 - Debug, 20 - Info, 30 - Warnings', type=int, default=20)
+    parser.add_argument('--logging-level', help='Logging level: 10 - Debug, 20 - Info, 30 - Warnings', type=int, default=10)
     args = parser.parse_args()
 
     if args.node_name is None:

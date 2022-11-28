@@ -10,16 +10,14 @@ logging.basicConfig(level=logging.DEBUG)
 
 class UserNode(Node):
     def readInput(self):
-        time.sleep(1)
         inp = input("Data name or quit: ")
         if inp == "quit":
             return False
         if inp == "state":
-            # For debugging only
-            i = self.icn.ip_node
-            print(f"name:{self.name}\nconnections:{i.connections}\nip map:{i.IP_map}\npeers:{self.peers}\ndata:{self.data}\nPIT:{self.PIT}\ncache:{self.cache}\nlocations:{self.locations}")
+            print(self)
         else:
-            self.reactor.callFromThread(self.requestData, inp, 60)
+            self.reactor.callFromThread(self.requestData, inp, 20)
+        time.sleep(1)
         return True
 
     def run(self):

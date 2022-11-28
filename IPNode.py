@@ -10,6 +10,7 @@ MIN_PORT = 5057
 MAX_PORT = 5070
 # Addresses of other physical devices should go here (yet to implement)
 EXTERNAL_NETWORKS = []
+LOCAL = ['localhost', '127.0.0.1']
 
 
 # Represents a connection (could be client -> server or server -> client)
@@ -22,11 +23,10 @@ class NodeProtocol(Protocol):
 
     def connectionMade(self):
         logging.info(f"[Connected]: {self.transport.getPeer()}")
-        # if self.incoming:
-        #     self.connections.append(self)
 
     def connectionLost(self, reason):
         logging.info(f"[Disconnected]: {self.transport.getPeer()}")
+        self.factory.removeConnection(self.transport.getPeer())
 
     def dataReceived(self, data):
         logging.debug(f"Data received: {data}")
@@ -39,6 +39,7 @@ class NodeProtocol(Protocol):
         self.factory.icn_protocol.handleMsg(data, self)
 
     def disconnect(self):
+        logging.info(f"[Disconnecting...]: {self.transport.getPeer()}")
         self.transport.loseConnection()
 
 
@@ -61,6 +62,8 @@ class IPNode(Factory):
         self.part_of_network = False
         self.isolated = True
 
+        self.addr = "localhost"
+
     def buildProtocol(self, addr):
         protocol = NodeProtocol(self, False)
         protocol.factory = self
@@ -68,7 +71,6 @@ class IPNode(Factory):
 
     def client(self, port, addr="localhost", announce_msg=None):
         # "Client"
-        self.addr = addr
         try:
             endp = TCP4ClientEndpoint(reactor, addr, port)
             d = connectProtocol(endp, NodeProtocol(self, True))
@@ -82,7 +84,7 @@ class IPNode(Factory):
         if node_id in self.connections:
             return self.connections[node_id]
         elif node_id in self.IP_map:
-            return
+            return None
         else:
             return None
 
@@ -126,10 +128,10 @@ class IPNode(Factory):
         except StopIteration:
             reactor.callLater(1, self.searchFailed, msg)
             return
-        logging.debug(f"Looking on port: {port}")
         if len(self.connections) > 0:
             logging.debug(f"Stopping search")
             return
+        logging.debug(f"Looking on port: {port}")
         d = self.client(port, announce_msg=msg)
         d.addCallback(self.continueSearch, msg, port_iter)
 
@@ -173,7 +175,7 @@ class IPNode(Factory):
         else:
             return self.IP_map[node_name]
 
-    def remove_node_connection(self, node_name):
+    def removeNodeConnection(self, node_name):
         p = self.connections.pop(node_name)
         p.disconnect()
 
@@ -191,9 +193,18 @@ class IPNode(Factory):
 
     def removePeer(self, node_name):
         if node_name in self.connections:
-            self.remove_node_connection(node_name)
-        if node_name in self.IP_map:
-            self.IP_map.pop(node_name)
+            self.removeNodeConnection(node_name)
+        # if node_name in self.IP_map:
+        #     if 
+        #     self.IP_map.pop(node_name)
+        self.icn_protocol.node.removePeer(node_name)
+
+    def removeConnection(self, peer):
+        addr = f"{peer.host}:{peer.port}"
+        for k, p in self.IP_map.items():
+            if addr == p:
+                self.removePeer(k)
+                break
 
     def errorHandler(self, e):
         e.trap(ConnectionRefusedError)
