@@ -1,9 +1,11 @@
 from ICNProtocol import ICNProtocol
+from Sensor import Sensor
 from twisted.internet import reactor
 from Tlru import TLRU_Table
 import logging
 import argparse
-from time import time
+from time import time, sleep
+from threading import Thread
 
 
 class Node:
@@ -15,11 +17,21 @@ class Node:
         self.locations = TLRU_Table(3)
         self.peers = []
         self.data = {}
+        self.sensors = {}
 
         self.icn = ICNProtocol(self, self.name, port)
 
         if data_n is not None and data_v is not None:
             self.data[data_n] = (data_v, 60)
+
+        if data_n is not None:
+            # Temperature sensor with a time to use of 60 (since it updates once per min)
+            self.sensors[data_n] = Sensor(data_n, 1)
+            self.sensors[data_n].update()
+            self.data[data_n] = self.sensors[data_n].getValue()
+
+        th = Thread(target=self.updateData, daemon=True)
+        th.start()
 
     def addToPIT(self, data_name, node_name, ttw, count=1):
         self.PIT.add(data_name, node_name, ttw, count)
@@ -90,6 +102,13 @@ class Node:
     def useData(self, data_name, data_val):
         logging.info(f"Received {data_name} with a value of {data_val}")
 
+    # Update data sources loop
+    def updateData(self):
+        while True:
+            for k, s in self.sensors.items():
+                s.update()
+                self.data[k] = s.getValue()
+            sleep(10)
 
 def main():
     parser = argparse.ArgumentParser()
