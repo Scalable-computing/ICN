@@ -18,7 +18,6 @@ class Sensor:
         self.interval = interval
         self.last_update = 0
         path = './temps/temperatures_' + self.name + '.csv'
-        print(path)
         df = np.genfromtxt(path, delimiter=',')
         df = df[1:,:]
         start = datetime.datetime(2012, 1, 1) #Retrieve historical weather data over the last 10 years
