@@ -9,14 +9,14 @@ import random
 LOCAL = ['localhost', '127.0.0.1']
 
 # PI values
-# MIN_PORT = 33010
-# MAX_PORT = 33020
-# NETWORKS = ["10.35.70.22", "10.35.70.23"]
+MIN_PORT = 33010
+MAX_PORT = 33020
+NETWORKS = ["10.35.70.22", "10.35.70.23"]
 
 # Local machine values
-MIN_PORT = 5060
-MAX_PORT = 5070
-NETWORKS = ["localhost", "127.0.0.1"]
+# MIN_PORT = 5060
+# MAX_PORT = 5070
+# NETWORKS = ["localhost", "127.0.0.1"]
 
 
 # Represents a connection (could be client -> server or server -> client)
@@ -231,8 +231,8 @@ class IPNode(Factory):
         if self.fallback_address is None:
             if addr is not None and port is not None:
                 host, p, n = addr.split(':')
-                if host in LOCAL:
-                    host = source.transport.getPeer().host
+                # if host in LOCAL:
+                host = source.transport.getPeer().host
             elif port is not None:
                 host = source.transport.getPeer().host
             addr = f"{host}:{port}:{node_name}"
@@ -250,6 +250,10 @@ class IPNode(Factory):
         self.fallbacks[node_name] = addr
 
     def fallbackDisconnect(self, node_name, addr):
+        host, port = addr.split(':')
+        addr = f"{host}:{port}:{node_name}"
+        if addr == self.fallback_address:
+            self.fallback_address = None
         if node_name in self.fallbacks:
             logging.debug(f"{node_name} found in fallback table of {self.id}")
             f = self.fallbacks.pop(node_name)

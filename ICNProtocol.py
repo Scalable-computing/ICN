@@ -260,6 +260,5 @@ class ICNProtocol:
         return self.sendMsg(ANNOUNCE, None, json.dumps({PRT: self.ip_node.getPort()}), 2)
 
     def sendFallback(self, node_name, addr):
-        print("FBFBF")
         content = json.dumps({PRT: self.ip_node.getPort(), FB: self.ip_node.getFallback()})
         self.sendMsg(ACKNOWLEDGE, node_name, content, 1)
