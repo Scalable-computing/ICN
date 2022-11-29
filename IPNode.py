@@ -6,11 +6,17 @@ from twisted.internet.error import ConnectionRefusedError
 import logging
 import random
 
-MIN_PORT = 5057
-MAX_PORT = 5070
-# Addresses of other physical devices should go here (yet to implement)
-EXTERNAL_NETWORKS = []
 LOCAL = ['localhost', '127.0.0.1']
+
+# PI values
+# MIN_PORT = 33010
+# MAX_PORT = 33020
+# NETWORKS = ["10.35.70.22", "10.35.70.23"]
+
+# Local machine values
+MIN_PORT = 5060
+MAX_PORT = 5070
+NETWORKS = ["localhost", "127.0.0.1"]
 
 
 # Represents a connection (could be client -> server or server -> client)
@@ -22,10 +28,10 @@ class NodeProtocol(Protocol):
         logging.debug(f"[New node protocol]: {self.id}")
 
     def connectionMade(self):
-        logging.info(f"[Connected]: {self.transport.getPeer()}")
+        logging.debug(f"[Connected]: {self.transport.getPeer()}")
 
     def connectionLost(self, reason):
-        logging.info(f"[Disconnected]: {self.transport.getPeer()}")
+        logging.debug(f"[Disconnected]: {self.transport.getPeer()}")
         self.factory.removeConnection(self.transport.getPeer())
 
     def dataReceived(self, data):
@@ -39,7 +45,7 @@ class NodeProtocol(Protocol):
         self.factory.icn_protocol.handleMsg(data, self)
 
     def disconnect(self):
-        logging.info(f"[Disconnecting...]: {self.transport.getPeer()}")
+        logging.debug(f"[Disconnecting...]: {self.transport.getPeer()}")
         self.transport.loseConnection()
 
 
@@ -116,27 +122,37 @@ class IPNode(Factory):
                 return
         connection.sendMsg(msg)
 
-    def search(self, msg, port_iter=None):
+    def search(self, msg, port_iter=None, addr="localhost", addr_iter=None):
         if port_iter is None:
             ports_to_check = [*range(MIN_PORT, MAX_PORT + 1)]
             random.shuffle(ports_to_check)
             port_iter = iter(ports_to_check)
+        if addr_iter is None:
+            networks_to_check = NETWORKS
+            random.shuffle(networks_to_check)
+            addr_iter = iter(networks_to_check)
+            addr = next(addr_iter)
         try:
             port = next(port_iter)
             if port == self.port:
                 port = next(port_iter)
         except StopIteration:
-            reactor.callLater(1, self.searchFailed, msg)
-            return
+            try:
+                addr = next(addr_iter)
+                self.search(msg, None, addr, addr_iter)
+                return
+            except StopIteration:
+                reactor.callLater(1, self.searchFailed, msg)
+                return
         if len(self.connections) > 0:
             logging.debug(f"Stopping search")
             return
-        logging.debug(f"Looking on port: {port}")
-        d = self.client(port, announce_msg=msg)
-        d.addCallback(self.continueSearch, msg, port_iter)
+        logging.debug(f"Looking on: {addr}:{port}")
+        d = self.client(port, addr=addr, announce_msg=msg)
+        d.addCallback(self.continueSearch, msg, port_iter, addr, addr_iter)
 
-    def continueSearch(self, prot, msg, port_iter):
-        reactor.callLater(0.2, self.search, msg, port_iter)
+    def continueSearch(self, prot, msg, port_iter, addr, addr_iter):
+        reactor.callLater(0.2, self.search, msg, port_iter, addr, addr_iter)
 
     def searchFailed(self, msg):
         if len(self.connections) > 0:
@@ -195,7 +211,6 @@ class IPNode(Factory):
         if node_name in self.connections:
             self.removeNodeConnection(node_name)
         # if node_name in self.IP_map:
-        #     if 
         #     self.IP_map.pop(node_name)
         self.icn_protocol.node.removePeer(node_name)
 

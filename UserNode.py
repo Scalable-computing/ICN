@@ -5,12 +5,11 @@ import logging
 import argparse
 import time
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 class UserNode(Node):
+
     def readInput(self):
-        inp = input("Data name or quit: ")
+        inp = input("Data name or quit: \n")
         if inp == "quit":
             return False
         if inp == "state":
@@ -41,6 +40,7 @@ def main():
         print("Please specify the port for this node")
         exit(1)
 
+    logging.basicConfig(level=logging.INFO, format='{0:8}%(levelname)-8s %(message)s'.format(args.node_name + ':'))
     n = UserNode(args.node_name, args.port, args.data_n, args.data_v)
     th = Thread(target=n.run, daemon=True)
     th.start()

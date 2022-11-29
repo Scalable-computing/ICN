@@ -21,9 +21,6 @@ class Node:
 
         self.icn = ICNProtocol(self, self.name, port)
 
-        if data_n is not None and data_v is not None:
-            self.data[data_n] = (data_v, 60)
-
         if data_n is not None:
             # Temperature sensor with a time to use of 60 (since it updates once per min)
             self.sensors[data_n] = Sensor(data_n, 60)
@@ -64,6 +61,10 @@ class Node:
 
     def addLocation(self, data_name, location):
         self.locations.add(data_name, location)
+
+    def removeLocation(self, data_name):
+        dest, count = self.locations.remove(data_name)
+        return dest, count
 
     def getLocation(self, data_name):
         location, t = self.locations.get(data_name)
@@ -133,7 +134,7 @@ def main():
     parser.add_argument('--port', help='Port for this node', type=int, default=5789)
     parser.add_argument('--data-n', help='Data name for this node', type=str, default=None)
     parser.add_argument('--data-v', help='Data for the node', type=str, default="10")
-    parser.add_argument('--logging-level', help='Logging level: 10 - Debug, 20 - Info, 30 - Warnings', type=int, default=10)
+    parser.add_argument('--logging-level', help='Logging level: 10 - Debug, 20 - Info, 30 - Warnings', type=int, default=20)
     args = parser.parse_args()
 
     if args.node_name is None:
@@ -144,7 +145,7 @@ def main():
         print("Please specify the port for this node")
         exit(1)
 
-    logging.basicConfig(level=args.logging_level)
+    logging.basicConfig(level=args.logging_level, format='{0:8}%(levelname)-8s %(message)s'.format(args.node_name + ':'))
     logging.debug(f"Running node {args.node_name}")
     n = Node(args.node_name, args.port, args.data_n, args.data_v)
     n.run()
