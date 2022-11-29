@@ -1,6 +1,8 @@
 from IPNode import IPNode, LOCAL
 import logging
 import json
+from cryptography.fernet import Fernet
+
 
 HANDSHAKE_TIME_LIMIT = 10
 NO_ADDR = 'NO_ADDRESS'
