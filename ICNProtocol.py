@@ -35,6 +35,20 @@ class ICNProtocol:
     # Sends a message with format {id:__, msg_type:__, content:__, ttl:__} where id is the sender's
     # name, msg_type is the message type and content could be a piece of data, a location (node name)
     # for some data, etc. TTL is time to live, i.e. how many hops for a request.
+    def encrypt_data_val(self,data_val):
+        print("*****************Encryption***********")
+        key = b'5sb7hUkLx4O9eN0eyFT0rVl1TEXJ6C2Gm1FjGFydCBA='
+        f = Fernet(key)
+        token = f.encrypt(bytes(str(data_val),'UTF-8'))
+        return token.decode("utf-8")
+    
+    def decrypt_data_val(self,data_val):
+        print("*****************Decryption***********")
+        key = b'5sb7hUkLx4O9eN0eyFT0rVl1TEXJ6C2Gm1FjGFydCBA='
+        f = Fernet(key)
+        token = f.decrypt(bytes(data_val,'UTF-8'))
+        return  token.decode("utf-8")    
+
     def sendMsg(self, msg_type, node_name, content="", ttl=1):
         msg = json.dumps({'id': self.node.name, 'type': msg_type, 'content': content, 'ttl': ttl})
         logging.debug(f"Message: {msg}")
@@ -114,6 +128,7 @@ class ICNProtocol:
         # Has data -> reply with data
         if self.node.hasData(data_name):
             data_val, ttu = self.node.getData(data_name)
+            data_val=self.encrypt_data_val(data_val)
             content = json.dumps({DN: data_name, DV: data_val, TTU: ttu, LOC: NO_ADDR})
             self.sendMsg(DATA, node_name, content)
             return
@@ -173,6 +188,7 @@ class ICNProtocol:
         if dest == self.node.name:
             location = self.updateMessageLocation(node_name, location)
             self.addLocation(data_name, location)
+            data_val = self.decrypt_data_val(data_val)
             self.node.useData(data_name, data_val)
         # Data in PIT, requested by other node -> forward data + cache data
         else:
@@ -190,6 +206,7 @@ class ICNProtocol:
 
         if self.node.hasData(data_name):
             data_val, ttu = self.node.getData(data_name)
+            data_val=self.encrypt_data_val(data_val)
             content = json.dumps({DN: data_name, DV: data_val, TTU: ttu, LOC: None})
             self.sendMsg(DATA, node_name, content)
         else:
