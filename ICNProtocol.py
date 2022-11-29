@@ -1,6 +1,8 @@
 from IPNode import IPNode, LOCAL
 import logging
 import json
+from cryptography.fernet import Fernet
+
 
 HANDSHAKE_TIME_LIMIT = 10
 NO_ADDR = 'NO_ADDRESS'
@@ -94,12 +96,21 @@ class ICNProtocol:
             ttl -= 1
             content = json.dumps({PRT: self.ip_node.getPort()})
             self.sendMsg(ACKNOWLEDGE, node_name, content, ttl)
+    def encrypt_data_val(self,data_val):
+        print("*****************Encryption***********")
+        key = b'5sb7hUkLx4O9eN0eyFT0rVl1TEXJ6C2Gm1FjGFydCBA='
+        f = Fernet(key)
+        token = f.encrypt(bytes(str(data_val),'UTF-8'))
+        return token.decode("utf-8")
 
     def handleRequest(self, node_name, data_name, ttw, ttl):
         ttl -= 1
         # Has data -> reply with data
         if self.node.hasData(data_name):
             data_val, ttu = self.node.getData(data_name)
+            print(data_val)
+            data_val=self.encrypt_data_val(data_val)
+            
             content = json.dumps({DN: data_name, DV: data_val, TTU: ttu, LOC: NO_ADDR})
             self.sendMsg(DATA, node_name, content)
             return
@@ -148,6 +159,12 @@ class ICNProtocol:
         # If final count of item has been removed AND this node is the destination -> Data not found
         elif r == 0 and dest == self.node.name:
             logging.warning(f"Data for {data_name} could not be found on network")
+    def decrypt_data_val(self,data_val):
+        print("*****************Decryption***********")
+        key = b'5sb7hUkLx4O9eN0eyFT0rVl1TEXJ6C2Gm1FjGFydCBA='
+        f = Fernet(key)
+        token = f.decrypt(bytes(data_val,'UTF-8'))
+        return  token.decode("utf-8")      
 
     def handleData(self, node_name, data_name, data_val, ttu, location):
         dest, r = self.node.removeFromPIT(data_name)
@@ -158,6 +175,7 @@ class ICNProtocol:
         if dest == self.node.name:
             location = self.updateMessageLocation(node_name, location)
             self.addLocation(data_name, location)
+            data_val = self.decrypt_data_val(data_val)
             self.node.useData(data_name, data_val)
         # Data in PIT, requested by other node -> forward data + cache data
         else:
@@ -175,6 +193,8 @@ class ICNProtocol:
 
         if self.node.hasData(data_name):
             data_val, ttu = self.node.getData(data_name)
+            data_val=self.encrypt_data_val(data_val)
+            print(data_val)
             content = json.dumps({DN: data_name, DV: data_val, TTU: ttu, LOC: None})
             self.sendMsg(DATA, node_name, content)
         else:
