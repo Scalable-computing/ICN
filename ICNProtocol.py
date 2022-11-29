@@ -21,6 +21,7 @@ LOC = 'location'
 LOCN = 'location_name'
 TTW = 'time_to_wait'
 PRT = 'port'
+FB = 'fallback'
 
 
 # Represents ICN protocol
@@ -53,7 +54,10 @@ class ICNProtocol:
             self.handleAnnounce(node_name, c[PRT], source, ttl)
 
         elif msg_type == ACKNOWLEDGE:
-            self.handleAcknowledge(node_name, c[PRT], source, ttl)
+            if FB in c:
+                self.handleAcknowledge(node_name, c[PRT], source, ttl, c[FB])
+            else:
+                self.handleAcknowledge(node_name, c[PRT], source, ttl)
 
         elif msg_type == REQUEST:
             logging.info(f"[Request received from {node_name} for {c[DN]}, {ttl}]")
@@ -83,17 +87,26 @@ class ICNProtocol:
         logging.info(f"[Announcement received from {node_name}]")
         self.ip_node.addNodeAddr(node_name, port, None, source)
         self.node.reactor.callLater(HANDSHAKE_TIME_LIMIT, self.ip_node.verifyPeer, node_name)
-        content = json.dumps({PRT: self.ip_node.getPort()})
+        content = json.dumps({PRT: self.ip_node.getPort(), FB: self.ip_node.getFallback()})
         self.sendMsg(ACKNOWLEDGE, node_name, content, ttl)
 
-    def handleAcknowledge(self, node_name, port, source, ttl):
+    def handleAcknowledge(self, node_name, port, source, ttl, fallback=None):
+        if fallback is not None:
+            logging.debug(f"Updating fallback for {node_name}")
+            self.ip_node.updateFallback(node_name, fallback)
+        if node_name in self.node.peers or source is None:
+            return
         logging.info(f"[Acknowledgement received from {node_name}]")
+        fb = self.ip_node.setFallback(node_name, fallback, source, port)
         self.ip_node.addNodeAddr(node_name, port, None, source)
         self.ip_node.addNodeConnection(node_name, source)
         self.node.addPeer(node_name)
-        if ttl > 1:
+        if fb is not None:
             ttl -= 1
-            content = json.dumps({PRT: self.ip_node.getPort()})
+            self.sendFallback(node_name, fb)
+        elif ttl > 1:
+            ttl -= 1
+            content = json.dumps({PRT: self.ip_node.getPort(), FB: self.ip_node.getFallback()})
             self.sendMsg(ACKNOWLEDGE, node_name, content, ttl)
 
     def handleRequest(self, node_name, data_name, ttw, ttl):
@@ -242,3 +255,11 @@ class ICNProtocol:
                 self.node.addToPIT(data_name, self.node.name, ttw, count)
                 count += 1
                 self.sendMsg(REQUEST, n, content, ttl)
+
+    def getAnnounce(self):
+        return self.sendMsg(ANNOUNCE, None, json.dumps({PRT: self.ip_node.getPort()}), 2)
+
+    def sendFallback(self, node_name, addr):
+        print("FBFBF")
+        content = json.dumps({PRT: self.ip_node.getPort(), FB: self.ip_node.getFallback()})
+        self.sendMsg(ACKNOWLEDGE, node_name, content, 1)

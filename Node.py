@@ -125,7 +125,9 @@ class Node:
             sleep(10)
 
     def __str__(self):
-        return f"Name: {self.name}\nPIT:\n{self.PIT}\nCache:\n{self.cache}\nLocations:\n{self.locations}\nPeers:\n{self.peers}\nData:\n{self.data}\nIP map:\n{self.icn.ip_node.IP_map}\nConnections\n{self.icn.ip_node.connections}"
+        str = f"Name: {self.name}\nPIT:\n{self.PIT}\nCache:\n{self.cache}\nLocations:\n{self.locations}\nPeers:\n{self.peers}\n"
+        str += f"Data:\n{self.data}\nIP map:\n{self.icn.ip_node.IP_map}\nConnections:\n{self.icn.ip_node.connections}\nFallback:"
+        return str + f"\n{self.icn.ip_node.fallback_address}\nFallbacks:\n{self.icn.ip_node.fallbacks}"
 
 
 def main():
