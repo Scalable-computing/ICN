@@ -30,6 +30,7 @@ class ICNProtocol:
     def __init__(self, node, node_id, port):
         self.node = node
         self.ip_node = IPNode(self, node_id, port)
+        logging.info("Looking for other nodes")
         self.ip_node.search(self.sendMsg(ANNOUNCE, None, json.dumps({PRT: self.ip_node.getPort()}), 2))
 
     # Sends a message with format {id:__, msg_type:__, content:__, ttl:__} where id is the sender's
@@ -37,9 +38,9 @@ class ICNProtocol:
     # for some data, etc. TTL is time to live, i.e. how many hops for a request.
     def sendMsg(self, msg_type, node_name, content="", ttl=1):
         msg = json.dumps({'id': self.node.name, 'type': msg_type, 'content': content, 'ttl': ttl})
-        logging.info(f"[Sending message: {msg_type} to {node_name}] ")
         logging.debug(f"Message: {msg}")
         if node_name is not None:
+            logging.info(f"[Sending message: {msg_type} to {node_name}] ")
             self.ip_node.sendMsg(msg, node_name)
         return msg
 
@@ -159,12 +160,14 @@ class ICNProtocol:
         # If final count of item has been removed AND this node is the destination -> Data not found
         elif r == 0 and dest == self.node.name:
             logging.warning(f"Data for {data_name} could not be found on network")
+             self.node.removeLocation(data_name)
     def decrypt_data_val(self,data_val):
         print("*****************Decryption***********")
         key = b'5sb7hUkLx4O9eN0eyFT0rVl1TEXJ6C2Gm1FjGFydCBA='
         f = Fernet(key)
         token = f.decrypt(bytes(data_val,'UTF-8'))
         return  token.decode("utf-8")      
+           
 
     def handleData(self, node_name, data_name, data_val, ttu, location):
         dest, r = self.node.removeFromPIT(data_name)
@@ -225,7 +228,7 @@ class ICNProtocol:
             return None
         host = addr.split(':')[0]
         if host not in LOCAL:
-            return f"{host}:{port}:{node_name}"
+            return f"{host}:{port}:{name}"
         return location
 
     def requestData(self, data_name, ttw, ttl=5):
