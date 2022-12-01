@@ -9,14 +9,14 @@ import random
 LOCAL = ['localhost', '127.0.0.1']
 
 # PI values
-# MIN_PORT = 33010
-# MAX_PORT = 33020
-# NETWORKS = ["10.35.70.22", "10.35.70.23"]
+MIN_PORT = 33010
+MAX_PORT = 33016
+NETWORKS = ["10.35.70.22", "10.35.70.23", "10.35.70.42", "10.35.70.43", "10.35.70.44", "10.35.70.41"]
 
 # Local machine values
-MIN_PORT = 5060
-MAX_PORT = 5070
-NETWORKS = ["localhost", "127.0.0.1"]
+# MIN_PORT = 5060
+# MAX_PORT = 5070
+# NETWORKS = ["localhost", "127.0.0.1"]
 
 
 # Represents a connection (could be client -> server or server -> client)
@@ -61,6 +61,8 @@ class IPNode(Factory):
         self.connections = {}
         self.IP_map = {}
         self.icn_protocol = icnp
+        self.fallback_address = None
+        self.fallbacks = {}
 
         endp = TCP4ServerEndpoint(reactor, port)
         endp.listen(self)
@@ -152,7 +154,7 @@ class IPNode(Factory):
         d.addCallback(self.continueSearch, msg, port_iter, addr, addr_iter)
 
     def continueSearch(self, prot, msg, port_iter, addr, addr_iter):
-        reactor.callLater(0.2, self.search, msg, port_iter, addr, addr_iter)
+        reactor.callLater(0.1, self.search, msg, port_iter, addr, addr_iter)
 
     def searchFailed(self, msg):
         if len(self.connections) > 0:
@@ -219,7 +221,48 @@ class IPNode(Factory):
         for k, p in self.IP_map.items():
             if addr == p:
                 self.removePeer(k)
+                self.fallbackDisconnect(k, addr)
                 break
+
+    def getFallback(self):
+        return self.fallback_address
+
+    def setFallback(self, node_name, addr, source, port):
+        if self.fallback_address is None:
+            if addr is not None and port is not None:
+                host, p, n = addr.split(':')
+                # if host in LOCAL:
+                host = source.transport.getPeer().host
+            elif port is not None:
+                host = source.transport.getPeer().host
+            addr = f"{host}:{port}:{node_name}"
+            self.fallback_address = addr
+            for p in self.icn_protocol.node.peers:
+                if p == node_name:
+                    continue
+                else:
+                    self.icn_protocol.sendFallback(p, addr)
+            return self.fallback_address
+        else:
+            return None
+
+    def updateFallback(self, node_name, addr):
+        self.fallbacks[node_name] = addr
+
+    def fallbackDisconnect(self, node_name, addr):
+        host, port = addr.split(':')
+        addr = f"{host}:{port}:{node_name}"
+        if addr == self.fallback_address:
+            self.fallback_address = None
+        if node_name in self.fallbacks:
+            logging.debug(f"{node_name} found in fallback table of {self.id}")
+            f = self.fallbacks.pop(node_name)
+            msg = self.icn_protocol.getAnnounce()
+            host, port, n = f.split(':')
+            if n == self.id:
+                return
+            self.addNodeAddr(n, port, host)
+            self.sendMsg(msg, n)
 
     def errorHandler(self, e):
         e.trap(ConnectionRefusedError)

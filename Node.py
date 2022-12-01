@@ -1,5 +1,5 @@
 from ICNProtocol import ICNProtocol
-from Sensor import Sensor
+from Sensor import Sensor, TempSensor, PerSensor, HumSensor, BarSensor, CloudSensor, SnowSensor, WaterSensor, WindSensor
 from twisted.internet import reactor
 from Tlru import TLRU_Table
 import logging
@@ -23,9 +23,38 @@ class Node:
 
         if data_n is not None:
             # Temperature sensor with a time to use of 60 (since it updates once per min)
-            self.sensors[data_n] = Sensor(data_n, 60)
-            self.sensors[data_n].update()
-            self.data[data_n] = self.sensors[data_n].getValue()
+            self.sensors[data_n+"_temp"] = TempSensor(data_n, 60)
+            self.sensors[data_n+"_temp"].update()
+            self.data[data_n+"_temp"] = self.sensors[data_n+"_temp"].getValue()
+
+            self.sensors[data_n+"_per"] = PerSensor(data_n, 60)
+            self.sensors[data_n+"_per"].update()
+            self.data[data_n+"_per"] = self.sensors[data_n+"_per"].getValue()
+
+            self.sensors[data_n+"_hum"] = HumSensor(data_n, 60)
+            self.sensors[data_n+"_hum"].update()
+            self.data[data_n+"_hum"] = self.sensors[data_n+"_hum"].getValue()
+
+            self.sensors[data_n+"_bar"] = BarSensor(data_n, 60)
+            self.sensors[data_n+"_bar"].update()
+            self.data[data_n+"_bar"] = self.sensors[data_n+"_bar"].getValue()
+
+            self.sensors[data_n+"_cloud"] = CloudSensor(data_n, 60)
+            self.sensors[data_n+"_cloud"].update()
+            self.data[data_n+"_cloud"] = self.sensors[data_n+"_cloud"].getValue()
+
+            self.sensors[data_n+"_snow"] = SnowSensor(data_n, 60)
+            self.sensors[data_n+"_snow"].update()
+            self.data[data_n+"_snow"] = self.sensors[data_n+"_snow"].getValue()
+
+            self.sensors[data_n+"_water"] = WaterSensor(data_n, 60)
+            self.sensors[data_n+"_water"].update()
+            self.data[data_n+"_water"] = self.sensors[data_n+"_water"].getValue()
+
+            self.sensors[data_n+"_wind"] = WindSensor(data_n, 60)
+            self.sensors[data_n+"_wind"].update()
+            self.data[data_n+"_wind"] = self.sensors[data_n+"_wind"].getValue()
+
 
         th = Thread(target=self.updateData, daemon=True)
         th.start()
@@ -125,7 +154,9 @@ class Node:
             sleep(10)
 
     def __str__(self):
-        return f"Name: {self.name}\nPIT:\n{self.PIT}\nCache:\n{self.cache}\nLocations:\n{self.locations}\nPeers:\n{self.peers}\nData:\n{self.data}\nIP map:\n{self.icn.ip_node.IP_map}\nConnections\n{self.icn.ip_node.connections}"
+        str = f"Name: {self.name}\nPIT:\n{self.PIT}\nCache:\n{self.cache}\nLocations:\n{self.locations}\nPeers:\n{self.peers}\n"
+        str += f"Data:\n{self.data}\nIP map:\n{self.icn.ip_node.IP_map}\nConnections:\n{self.icn.ip_node.connections}\nFallback:"
+        return str + f"\n{self.icn.ip_node.fallback_address}\nFallbacks:\n{self.icn.ip_node.fallbacks}"
 
 
 def main():

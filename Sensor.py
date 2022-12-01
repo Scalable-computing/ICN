@@ -126,3 +126,36 @@ class Sensor:
         prediction = np.random.normal(mean, std_dev) #simulate using a normal distr approximation of temperatures
         self.lastvalue = prediction
         return prediction
+
+class WindSensor(Sensor):
+    def get_update(self):
+        self.lastvalue = 30 + super().get_update() / 2
+
+class PerSensor(Sensor):
+    def get_update(self):
+        self.lastvalue = abs((super().get_update() - 4) / 6)
+
+class HumSensor(Sensor):
+    def get_update(self):
+        self.lastvalue = 100 - super().get_update()
+
+class BarSensor(Sensor):
+    def get_update(self):
+        self.lastvalue = 1000 + 0.5*super().get_update() / 2
+
+class CloudSensor(Sensor):
+    def get_update(self):
+        self.lastvalue = 100 - (super().get_update() * 3)
+
+class SnowSensor(Sensor):
+    def get_update(self):
+        self.lastvalue = 0
+
+class WaterSensor(Sensor):
+    def get_update(self):
+        self.lastvalue = 20 + 0.5*super().get_update()
+
+class TempSensor(Sensor):
+    def get_update(self):
+        self.lastvalue = super().get_update()
+

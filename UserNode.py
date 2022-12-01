@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--port', help='Port for this node', type=int, default=5789)
     parser.add_argument('--data-n', help='Data name for this node', type=str, default=None)
     parser.add_argument('--data-v', help='Data for the node', type=str, default="10")
+    parser.add_argument('--logging-level', help='Logging level: 10 - Debug, 20 - Info, 30 - Warnings', type=int, default=20)
     args = parser.parse_args()
 
     if args.node_name is None:
@@ -40,7 +41,7 @@ def main():
         print("Please specify the port for this node")
         exit(1)
 
-    logging.basicConfig(level=logging.INFO, format='{0:8}%(levelname)-8s %(message)s'.format(args.node_name + ':'))
+    logging.basicConfig(level=args.logging_level, format='{0:8}%(levelname)-8s %(message)s'.format(args.node_name + ':'))
     n = UserNode(args.node_name, args.port, args.data_n, args.data_v)
     th = Thread(target=n.run, daemon=True)
     th.start()
