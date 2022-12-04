@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
+    # -*- coding: utf-8 -*-
 """
 Created on Tue Nov 22 14:40:44 2022
-
 @author: Jeroen Lemsom
 """
 import numpy as np
@@ -12,7 +11,7 @@ import math
 
 class Sensor:
  
-    #Sensor Constructor which takes the name and the location of the temperature sensor as inputs
+    #Sensor Constructor which takes the name and the location of the sensor as inputs
     def __init__(self, name, interval):
         self.name = name
         self.interval = interval
@@ -42,7 +41,7 @@ class Sensor:
             self.last_update = t
             self.get_update()
 
-    #This method returns a kernel weighted longterm average temperature for a specific day in the year
+    #This method returns a kernel weighted longterm average for a specific day in the year
     def get_longtermaverage(self):
         month = datetime.datetime.now().month
         day = datetime.datetime.now().day
@@ -62,7 +61,7 @@ class Sensor:
         return weighted_tavg
     
     
-    #On top of the get_longtermaverage method, this method adjusts the average temperature for specific hours during the day using linear interpolation
+    #On top of the get_longtermaverage method, this method adjusts the average for specific hours during the day using linear interpolation
     def get_longtermaverage_corrected_for_dayhour(self):
         
         month = datetime.datetime.now().month
@@ -91,7 +90,7 @@ class Sensor:
         longtermaverage_corrected_for_dayhour = weighted_tmax - increment*corrected_hour
         return longtermaverage_corrected_for_dayhour
     
-    #This method calculates the historical standard deviation of 
+    #This method calculates the historical standard deviation 
     def get_longtermstandarddev(self):
         #Filter historical data on data which has the same date (eg 23st of November) in different years
         month = datetime.datetime.now().month
@@ -117,45 +116,88 @@ class Sensor:
         return daily_stddev
     
     #Update of the Prediction
-    #The Prediction is based on (1) the kernel weighted historical average on the day corrected for the specific hourj and (2) the previous prediction
+    #The Prediction is based on (1) the kernel weighted historical average on the day corrected for the specific hour and (2) the previous prediction
     def get_update(self):
         longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
         #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
         mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
         std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
-        prediction = np.random.normal(mean, std_dev) #simulate using a normal distr approximation of temperatures
+        prediction = np.random.normal(mean, std_dev) #simulate using a normal distr approximation
         self.lastvalue = prediction
         return prediction
 
 class WindSensor(Sensor):
     def get_update(self):
-        self.lastvalue = 30 + super().get_update() / 2
+        longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
+        #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
+        mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
+        std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
+        prediction = np.random.normal(30 + mean, std_dev)/2 #simulate using a normal distr approximation
+        self.lastvalue = prediction
 
 class PerSensor(Sensor):
     def get_update(self):
-        self.lastvalue = abs((super().get_update() - 4) / 6)
+        longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
+        #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
+        mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
+        std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
+        prediction = np.random.normal(mean - 4, std_dev)/6 #simulate using a normal distr approximation
+        self.lastvalue = abs(prediction)
 
 class HumSensor(Sensor):
     def get_update(self):
-        self.lastvalue = 100 - super().get_update()
+        longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
+        #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
+        mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
+        std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
+        prediction = np.random.normal(mean, std_dev) #simulate using a normal distr approximation
+        self.lastvalue = 100 - prediction      
 
 class BarSensor(Sensor):
     def get_update(self):
-        self.lastvalue = 1000 + 0.5*super().get_update() / 2
+        longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
+        #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
+        mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
+        std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
+        prediction = np.random.normal(mean, std_dev) + 1000 #simulate using a normal distr approximation
+        self.lastvalue = prediction / 4 
 
 class CloudSensor(Sensor):
     def get_update(self):
-        self.lastvalue = 100 - (super().get_update() * 3)
-
+        longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
+        #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
+        mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
+        std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
+        prediction = np.random.normal(3*mean, 3*std_dev) #simulate using a normal distr approximation
+        self.lastvalue = 100 - prediction 
+        
 class SnowSensor(Sensor):
     def get_update(self):
-        self.lastvalue = 0
+        longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
+        #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
+        mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
+        std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
+        prediction = np.random.normal(mean - 50, std_dev) #simulate using a normal distr approximation
+        if(prediction < 0):
+            self.lastvalue = 0
+        if(prediction > 0):
+            self.lastvalue = prediction
 
 class WaterSensor(Sensor):
     def get_update(self):
-        self.lastvalue = 20 + 0.5*super().get_update()
+        longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
+        #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
+        mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
+        std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
+        prediction = 0.5*np.random.normal(mean, std_dev) + 20 #simulate using a normal distr approximation
+        self.lastvalue = prediction 
 
 class TempSensor(Sensor):
     def get_update(self):
-        self.lastvalue = super().get_update()
-
+        longtermaverage_corrected_for_dayhour = self.get_longtermaverage_corrected_for_dayhour()
+        #Assign weights of 0.2 and 0.8 to the long term and short term component respectively
+        mean = ((0.2*longtermaverage_corrected_for_dayhour) + 0.8*self.lastvalue)
+        std_dev = self.get_longtermstandarddev()/math.sqrt(24*60) #decrease daily std dev to a smaller value to represent noise in minute data
+        prediction = np.random.normal(mean, std_dev) #simulate using a normal distr approximation
+        self.lastvalue = prediction
+        return prediction

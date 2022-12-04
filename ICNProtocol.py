@@ -1,3 +1,4 @@
+# Dara, Guo, Milan
 from IPNode import IPNode, LOCAL
 import logging
 import json
@@ -34,9 +35,6 @@ class ICNProtocol:
         logging.info("Looking for other nodes")
         self.ip_node.search(self.sendMsg(ANNOUNCE, None, json.dumps({PRT: self.ip_node.getPort()}), 2))
 
-    # Sends a message with format {id:__, msg_type:__, content:__, ttl:__} where id is the sender's
-    # name, msg_type is the message type and content could be a piece of data, a location (node name)
-    # for some data, etc. TTL is time to live, i.e. how many hops for a request.
     def encrypt_data_val(self,data_val):
         logging.info("Encrypting data")
         key = b'5sb7hUkLx4O9eN0eyFT0rVl1TEXJ6C2Gm1FjGFydCBA='
@@ -51,6 +49,9 @@ class ICNProtocol:
         token = f.decrypt(bytes(data_val,'UTF-8'))
         return  token.decode("utf-8")    
 
+    # Sends a message with format {id:__, msg_type:__, content:__, ttl:__} where id is the sender's
+    # name, msg_type is the message type and content could be a piece of data, a location (node name)
+    # for some data, etc. TTL is time to live, i.e. how many hops for a request.
     def sendMsg(self, msg_type, node_name, content="", ttl=1):
         msg = json.dumps({'id': self.node.name, 'type': msg_type, 'content': content, 'ttl': ttl})
         logging.debug(f"Message: {msg}")
@@ -150,9 +151,9 @@ class ICNProtocol:
             # Propagate request
             self.node.addToPIT(data_name, node_name, ttw)
             content = json.dumps({DN: data_name, TTW: ttw})
-            if self.node.hasLocation(data_name):
+            if self.node.hasLocation(data_name) and self.node.getLocation(data_name) in self.node.peers:
                 # Send to guaranteed node
-                self.sendMsg(REQUEST, self.getLocation(data_name), content, ttl)
+                self.sendMsg(REQUEST, self.node.getLocation(data_name), content, ttl)
             else:
                 # Send to all other peers
                 count = 1

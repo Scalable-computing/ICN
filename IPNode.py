@@ -1,3 +1,5 @@
+# Dara, Milan
+
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.endpoints import TCP4ClientEndpoint, connectProtocol
@@ -8,15 +10,14 @@ import random
 
 LOCAL = ['localhost', '127.0.0.1']
 
-# PI values
-MIN_PORT = 33010
-MAX_PORT = 33016
-NETWORKS = ["10.35.70.22", "10.35.70.23", "10.35.70.42", "10.35.70.43", "10.35.70.44", "10.35.70.41"]
+# PI addresses
+# NETWORKS = ["10.35.70.22", "10.35.70.23", "10.35.70.42", "10.35.70.43", "10.35.70.44", "10.35.70.41"]
 
 # Local machine values
-# MIN_PORT = 5060
-# MAX_PORT = 5070
-# NETWORKS = ["localhost", "127.0.0.1"]
+NETWORKS = ["localhost", "127.0.0.1"]
+
+MIN_PORT = 33010
+MAX_PORT = 33016
 
 
 # Represents a connection (could be client -> server or server -> client)
